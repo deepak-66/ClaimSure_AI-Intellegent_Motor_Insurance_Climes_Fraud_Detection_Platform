@@ -1,0 +1,971 @@
+CREATE DATABASE claimssure_ai;
+USE claimssure_ai;
+CREATE TABLE users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    phone VARCHAR(15),
+    role ENUM('Policyholder','Claims Officer',
+              'Surveyor','Admin') NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE policyholders (
+    policyholder_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    address TEXT,
+    city VARCHAR(100),
+    state VARCHAR(100),
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+CREATE TABLE policies (
+    policy_id INT AUTO_INCREMENT PRIMARY KEY,
+    policy_number VARCHAR(50) UNIQUE NOT NULL,
+    policy_type VARCHAR(50),
+    coverage_details TEXT,
+    start_date DATE,
+    end_date DATE,
+    premium DECIMAL(12,2),
+    coverage_amount DECIMAL(12,2),
+    policy_status ENUM('Active','Expired','Cancelled')
+);
+CREATE TABLE vehicles (
+    vehicle_id INT AUTO_INCREMENT PRIMARY KEY,
+    policyholder_id INT NOT NULL,
+    policy_id INT NOT NULL,
+    vehicle_number VARCHAR(20) UNIQUE NOT NULL,
+    vehicle_model VARCHAR(100),
+    vehicle_type VARCHAR(50),
+    manufacturing_year YEAR,
+    FOREIGN KEY (policyholder_id)
+        REFERENCES policyholders(policyholder_id),
+    FOREIGN KEY (policy_id)
+        REFERENCES policies(policy_id)
+);
+
+CREATE TABLE garages (
+    garage_id INT AUTO_INCREMENT PRIMARY KEY,
+    garage_name VARCHAR(150) NOT NULL,
+    address TEXT,
+    city VARCHAR(100),
+    phone VARCHAR(15),
+    email VARCHAR(100)
+);
+
+CREATE TABLE claims (
+    claim_id INT AUTO_INCREMENT PRIMARY KEY,
+    policyholder_id INT NOT NULL,
+    vehicle_id INT NOT NULL,
+    policy_id INT NOT NULL,
+    garage_id INT,
+    accident_date DATE,
+    accident_description TEXT,
+    claim_amount DECIMAL(12,2),
+    claim_status ENUM(
+        'Registered',
+        'Under Review',
+        'Survey Assigned',
+        'Approved',
+        'Rejected',
+        'Settled'
+    ) DEFAULT 'Registered',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (policyholder_id)
+        REFERENCES policyholders(policyholder_id),
+    FOREIGN KEY (vehicle_id)
+        REFERENCES vehicles(vehicle_id),
+    FOREIGN KEY (policy_id)
+        REFERENCES policies(policy_id),
+    FOREIGN KEY (garage_id)
+        REFERENCES garages(garage_id)
+);
+
+CREATE TABLE claim_documents (
+    document_id INT AUTO_INCREMENT PRIMARY KEY,
+    claim_id INT NOT NULL,
+    document_type VARCHAR(50),
+    document_path VARCHAR(255),
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (claim_id) REFERENCES claims(claim_id)
+);
+
+CREATE TABLE survey_assignments (
+    assignment_id INT AUTO_INCREMENT PRIMARY KEY,
+    claim_id INT NOT NULL,
+    surveyor_id INT NOT NULL,
+    assigned_date DATE,
+    assignment_status VARCHAR(50),
+    FOREIGN KEY (claim_id) REFERENCES claims(claim_id),
+    FOREIGN KEY (surveyor_id) REFERENCES users(user_id)
+);
+CREATE TABLE inspection_reports (
+    report_id INT AUTO_INCREMENT PRIMARY KEY,
+    claim_id INT NOT NULL,
+    surveyor_id INT NOT NULL,
+    damage_description TEXT,
+    inspection_date DATE,
+    inspection_result VARCHAR(100),
+    remarks TEXT,
+    FOREIGN KEY (claim_id) REFERENCES claims(claim_id),
+    FOREIGN KEY (surveyor_id) REFERENCES users(user_id)
+);
+CREATE TABLE repair_estimates (
+    estimate_id INT AUTO_INCREMENT PRIMARY KEY,
+    claim_id INT NOT NULL,
+    garage_id INT,
+    parts_cost DECIMAL(12,2),
+    labour_cost DECIMAL(12,2),
+    total_estimated_cost DECIMAL(12,2),
+    estimated_date DATE,
+    FOREIGN KEY (claim_id) REFERENCES claims(claim_id),
+    FOREIGN KEY (garage_id) REFERENCES garages(garage_id)
+);
+
+CREATE TABLE fraud_assessments (
+    assessment_id INT AUTO_INCREMENT PRIMARY KEY,
+    claim_id INT NOT NULL,
+    fraud_score DECIMAL(5,2),
+    fraud_status ENUM('Low Risk','Medium Risk','High Risk'),
+    fraud_reason TEXT,
+    assessed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (claim_id) REFERENCES claims(claim_id)
+);
+CREATE TABLE settlements (
+    settlement_id INT AUTO_INCREMENT PRIMARY KEY,
+    claim_id INT NOT NULL,
+    approved_amount DECIMAL(12,2),
+    settlement_date DATE,
+    payment_status ENUM('Pending','Processing','Completed','Failed'),
+    settlement_remarks TEXT,
+    FOREIGN KEY (claim_id) REFERENCES claims(claim_id)
+);
+CREATE TABLE notifications (
+    notification_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    claim_id INT,
+    message TEXT,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    FOREIGN KEY (claim_id) REFERENCES claims(claim_id)
+);
+
+SHOW TABLES;
+
+INSERT INTO users
+(name, email, password, phone, role)
+VALUES
+('Ravi Kumar', 'ravi@gmail.com', 'demo_hash_1', '9876543210', 'Policyholder'),
+('Suresh Reddy', 'suresh@gmail.com', 'demo_hash_2', '9876543211', 'Policyholder'),
+('Priya Sharma', 'priya@gmail.com', 'demo_hash_3', '9876543212', 'Policyholder'),
+('Arun Kumar', 'arun@gmail.com', 'demo_hash_4', '9876543213', 'Surveyor'),
+('Kiran Rao', 'kiran@gmail.com', 'demo_hash_5', '9876543214', 'Surveyor'),
+('Anil Verma', 'anil@gmail.com', 'demo_hash_6', '9876543215', 'Claims Officer'),
+('Admin User', 'admin@gmail.com', 'demo_hash_7', '9876543216', 'Admin');
+
+INSERT INTO policyholders
+(user_id, address, city, state)
+VALUES
+(1,'MVP Colony','Visakhapatnam','Andhra Pradesh'),
+(2,'Dwaraka Nagar','Visakhapatnam','Andhra Pradesh'),
+(3,'Benz Circle','Vijayawada','Andhra Pradesh'),
+(4,'Gajuwaka','Visakhapatnam','Andhra Pradesh'),
+(5,'Rajahmundry Main Road','Rajahmundry','Andhra Pradesh'),
+(6,'Seethammadhara','Visakhapatnam','Andhra Pradesh'),
+(7,'Brodipet','Guntur','Andhra Pradesh');
+
+INSERT INTO policies
+(policy_number, policy_type, coverage_details,
+ start_date, end_date, premium, coverage_amount, policy_status)
+VALUES
+('POL1001','Comprehensive','Accident and theft coverage',
+ '2026-01-01','2027-01-01',12000,500000,'Active'),
+
+('POL1002','Third Party','Third party damage coverage',
+ '2026-02-01','2027-02-01',8500,300000,'Active'),
+
+('POL1003','Comprehensive','Accident and fire coverage',
+ '2026-03-01','2027-03-01',15000,800000,'Active'),
+
+('POL1004','Comprehensive','Accident and theft coverage',
+ '2026-04-01','2027-04-01',11000,450000,'Active'),
+
+('POL1005','Third Party','Third party liability coverage',
+ '2026-05-01','2027-05-01',7500,250000,'Active'),
+
+('POL1006','Comprehensive','Full vehicle damage coverage',
+ '2026-06-01','2027-06-01',18000,900000,'Active'),
+
+('POL1007','Comprehensive','Accident and fire coverage',
+ '2026-07-01','2027-07-01',14000,650000,'Active');
+
+INSERT INTO policies
+(policy_number, policy_type, coverage_details,
+ start_date, end_date, premium, coverage_amount, policy_status)
+VALUES
+('POL1001','Comprehensive','Accident and theft coverage',
+ '2026-01-01','2027-01-01',12000,500000,'Active'),
+
+('POL1002','Third Party','Third party damage coverage',
+ '2026-02-01','2027-02-01',8500,300000,'Active'),
+
+('POL1003','Comprehensive','Accident and fire coverage',
+ '2026-03-01','2027-03-01',15000,800000,'Active'),
+
+('POL1004','Comprehensive','Accident and theft coverage',
+ '2026-04-01','2027-04-01',11000,450000,'Active'),
+
+('POL1005','Third Party','Third party liability coverage',
+ '2026-05-01','2027-05-01',7500,250000,'Active'),
+
+('POL1006','Comprehensive','Full vehicle damage coverage',
+ '2026-06-01','2027-06-01',18000,900000,'Active'),
+
+('POL1007','Comprehensive','Accident and fire coverage',
+ '2026-07-01','2027-07-01',14000,650000,'Active');
+ 
+INSERT INTO vehicles
+(policyholder_id, policy_id, vehicle_number,
+ vehicle_model, vehicle_type, manufacturing_year)
+VALUES
+(1,1,'AP31AB1234','Hyundai i20','Car',2022),
+(2,2,'AP39CD5678','Honda City','Car',2021),
+(3,3,'AP16EF9012','Maruti Swift','Car',2023),
+(4,4,'AP31GH3456','Tata Nexon','Car',2022),
+(5,5,'AP05IJ7890','Honda Activa','Bike',2021),
+(6,6,'AP31KL2345','Kia Seltos','Car',2024),
+(7,7,'AP07MN6789','Toyota Innova','Car',2023);
+ 
+INSERT INTO garages
+(garage_name, address, city, phone, email)
+VALUES
+('Sri Sai Motors','MVP Colony','Visakhapatnam','9123456780','sai@gmail.com'),
+('Speed Auto Garage','Gajuwaka','Visakhapatnam','9123456781','speed@gmail.com'),
+('Royal Car Care','Benz Circle','Vijayawada','9123456782','royal@gmail.com'),
+('Vijaya Motors','Dwaraka Nagar','Visakhapatnam','9123456783','vijaya@gmail.com'),
+('City Auto Works','Danavaipeta','Rajahmundry','9123456784','cityauto@gmail.com'),
+('Smart Car Service','Seethammadhara','Visakhapatnam','9123456785','smart@gmail.com'),
+('National Motors','Brodipet','Guntur','9123456786','national@gmail.com');
+
+INSERT INTO claims
+(policyholder_id, vehicle_id, policy_id, garage_id,
+ accident_date, accident_description, claim_amount, claim_status)
+VALUES
+(1,1,1,1,'2026-10-01','Front bumper damaged',45000,'Settled'),
+(2,2,2,2,'2026-10-05','Car door and window damaged',65000,'Approved'),
+(3,3,3,3,'2026-10-10','Vehicle damaged due to collision',90000,'Under Review'),
+(4,4,4,4,'2026-10-12','Rear side damage',55000,'Survey Assigned'),
+(5,5,5,5,'2026-10-15','Bike accident damage',25000,'Registered'),
+(6,6,6,6,'2026-10-18','Front glass and engine damage',120000,'Approved'),
+(7,7,7,7,'2026-10-20','Side body damage',75000,'Settled');
+
+INSERT INTO claim_documents
+(claim_id, document_type, document_path)
+VALUES
+(1,'Accident Photo','uploads/claim1.jpg'),
+(2,'Repair Bill','uploads/claim2.pdf'),
+(3,'Accident Photo','uploads/claim3.jpg'),
+(4,'Vehicle Document','uploads/claim4.pdf'),
+(5,'Accident Photo','uploads/claim5.jpg'),
+(6,'Repair Bill','uploads/claim6.pdf'),
+(7,'Insurance Document','uploads/claim7.pdf');
+
+INSERT INTO survey_assignments
+(claim_id, surveyor_id, assigned_date, assignment_status)
+VALUES
+(1,8,'2026-10-02','Completed'),
+(2,9,'2026-10-06','Completed'),
+(3,10,'2026-10-11','Assigned'),
+(4,11,'2026-10-13','Assigned'),
+(5,8,'2026-10-16','Pending'),
+(6,9,'2026-10-19','Completed'),
+(7,10,'2026-10-21','Completed');
+
+INSERT INTO users
+(name, email, password, phone, role)
+VALUES
+('Rajesh','rajesh@gmail.com','hash008','9876543217','Surveyor'),
+('Vikram','vikram@gmail.com','hash009','9876543218','Surveyor'),
+('Anitha','anitha@gmail.com','hash010','9876543219','Surveyor'),
+('Deepak','deepak@gmail.com','hash011','9876543220','Surveyor');
+
+SELECT user_id, name
+FROM users
+WHERE role = 'Surveyor';
+
+INSERT INTO survey_assignments
+(claim_id, surveyor_id, assigned_date, assignment_status)
+VALUES
+(1,8,'2026-10-02','Completed'),
+(2,9,'2026-10-06','Completed'),
+(3,10,'2026-10-11','Assigned'),
+(4,11,'2026-10-13','Assigned'),
+(5,8,'2026-10-16','Pending'),
+(6,9,'2026-10-19','Completed'),
+(7,10,'2026-10-21','Completed');
+
+SELECT user_id, name
+FROM users
+WHERE role = 'Surveyor';
+
+INSERT INTO inspection_reports
+(claim_id, surveyor_id, damage_description,
+ inspection_date, inspection_result, remarks)
+VALUES
+(1,8,'Front bumper and headlight damage','2026-10-03','Verified','Damage confirmed'),
+(2,9,'Left door and window damage','2026-10-07','Verified','Repair required'),
+(3,10,'Front side collision damage','2026-10-12','Pending','Further inspection required'),
+(4,11,'Rear bumper damage','2026-10-14','Verified','Replacement required'),
+(5,8,'Bike front wheel damage','2026-10-17','Pending','Inspection in progress'),
+(6,9,'Front glass and engine damage','2026-10-20','Verified','Major repair required'),
+(7,10,'Right side body damage','2026-10-22','Verified','Repair recommended');
+
+SELECT * FROM inspection_reports;
+INSERT INTO repair_estimates
+(claim_id, garage_id, parts_cost, labour_cost,
+ total_estimated_cost, estimated_date)
+VALUES
+(1,1,25000,10000,35000,'2026-10-03'),
+(2,2,35000,12000,47000,'2026-10-07'),
+(3,3,50000,15000,65000,'2026-10-12'),
+(4,4,30000,10000,40000,'2026-10-14'),
+(5,5,12000,5000,17000,'2026-10-17'),
+(6,6,75000,20000,95000,'2026-10-20'),
+(7,7,40000,12000,52000,'2026-10-22');
+
+SELECT * FROM repair_estimates;
+
+INSERT INTO fraud_assessments
+(claim_id, fraud_score, fraud_status, fraud_reason)
+VALUES
+(1,10.00,'Low Risk','No suspicious activity detected'),
+
+(2,25.00,'Low Risk','Claim details verified'),
+
+(3,85.00,'High Risk','Unusual claim amount detected'),
+
+(4,40.00,'Medium Risk','Additional verification required'),
+
+(5,15.00,'Low Risk','No suspicious pattern detected'),
+
+(6,75.00,'High Risk','Claim amount requires investigation'),
+
+(7,20.00,'Low Risk','Claim details appear consistent');
+
+SELECT * FROM fraud_assessments;
+
+INSERT INTO settlements
+(claim_id, approved_amount, settlement_date,
+ payment_status, settlement_remarks)
+VALUES
+(1,35000,'2026-10-10','Completed',
+ 'Successfully settled'),
+
+(2,47000,NULL,'Pending',
+ 'Waiting for payment'),
+
+(3,0,NULL,'Pending',
+ 'Claim under review'),
+
+(4,0,NULL,'Pending',
+ 'Waiting for survey approval'),
+
+(5,0,NULL,'Pending',
+ 'Claim registration completed'),
+
+(6,95000,NULL,'Processing',
+ 'Payment processing'),
+
+(7,52000,'2026-10-25','Completed',
+ 'Successfully settled');
+SELECT * FROM settlements;
+
+INSERT INTO notifications
+(user_id, claim_id, message, is_read)
+VALUES
+(1,1,'Your claim has been successfully settled',TRUE),
+
+(2,2,'Your claim has been approved. Payment is pending',FALSE),
+
+(3,3,'Your claim is currently under review',FALSE),
+
+(4,4,'A surveyor has been assigned to your claim',FALSE),
+
+(5,5,'Your claim has been successfully registered',FALSE),
+
+(6,6,'Your claim payment is being processed',TRUE),
+
+(7,7,'Your claim has been successfully settled',TRUE);
+
+SELECT * FROM notifications;
+SHOW TABLES;
+
+SELECT 'users' AS table_name, COUNT(*) AS total FROM users
+UNION ALL
+SELECT 'policyholders', COUNT(*) FROM policyholders
+UNION ALL
+SELECT 'policies', COUNT(*) FROM policies
+UNION ALL
+SELECT 'vehicles', COUNT(*) FROM vehicles
+UNION ALL
+SELECT 'garages', COUNT(*) FROM garages
+UNION ALL
+SELECT 'claims', COUNT(*) FROM claims
+UNION ALL
+SELECT 'claim_documents', COUNT(*) FROM claim_documents
+UNION ALL
+SELECT 'survey_assignments', COUNT(*) FROM survey_assignments
+UNION ALL
+SELECT 'inspection_reports', COUNT(*) FROM inspection_reports
+UNION ALL
+SELECT 'repair_estimates', COUNT(*) FROM repair_estimates
+UNION ALL
+SELECT 'fraud_assessments', COUNT(*) FROM fraud_assessments
+UNION ALL
+SELECT 'settlements', COUNT(*) FROM settlements
+UNION ALL
+SELECT 'notifications', COUNT(*) FROM notifications;
+
+# Basic SQL queries #
+# 1. Display all customers
+SELECT * FROM policyholders;
+
+# 2. Display all insurance policies
+SELECT * FROM policies;
+
+# 3. Display all registered claims
+SELECT * FROM claims;
+
+# 4. Display only approved claims
+SELECT *FROM claims
+WHERE claim_status = 'Approved';
+
+# 5. Display high-risk fraud claims
+SELECT *
+FROM fraud_assessments
+WHERE fraud_status = 'High Risk';
+
+#6. Find claims above ₹50,000
+SELECT *
+FROM claims
+WHERE claim_amount > 50000;
+
+# 7. Display completed settlements
+SELECT *
+FROM settlements
+WHERE payment_status = 'Completed';
+
+# Important JOIN query #
+# 1. Customer and Claim Details
+SELECT
+    u.name AS customer_name,
+    c.claim_id,
+    c.claim_amount,
+    c.claim_status
+FROM users u
+JOIN policyholders p
+    ON u.user_id = p.user_id
+JOIN claims c
+    ON p.policyholder_id = c.policyholder_id;
+    # 2. Displays customer names and their vehicle information.
+    SELECT
+    u.name,
+    v.vehicle_number,
+    v.vehicle_model,
+    v.vehicle_type
+FROM users u
+JOIN policyholders p
+    ON u.user_id = p.user_id
+JOIN vehicles v
+    ON p.policyholder_id = v.policyholder_id;
+    
+   # 3. Displays claim amounts and AI fraud assessment results.
+   SELECT
+    c.claim_id,
+    c.claim_amount,
+    f.fraud_score,
+    f.fraud_status,
+    f.fraud_reason
+FROM claims c
+JOIN fraud_assessments f
+    ON c.claim_id = f.claim_id;
+    
+    # 4. Displays which garage is handling each claim.
+    SELECT
+    c.claim_id,
+    g.garage_name,
+    g.city,
+    c.claim_amount
+FROM claims c
+JOIN garages g
+    ON c.garage_id = g.garage_id;
+    
+   # 5. Displays customer, vehicle, claim and fraud information together.
+    SELECT
+    u.name AS customer_name,
+    v.vehicle_number,
+    v.vehicle_model,
+    c.claim_id,
+    c.claim_amount,
+    c.claim_status,
+    f.fraud_score,
+    f.fraud_status
+FROM claims c
+JOIN policyholders p
+    ON c.policyholder_id = p.policyholder_id
+JOIN users u
+    ON p.user_id = u.user_id
+JOIN vehicles v
+    ON c.vehicle_id = v.vehicle_id
+LEFT JOIN fraud_assessments f
+    ON c.claim_id = f.claim_id;
+  # Subqueries in MySQL #  
+    
+  #  1. Find claims above the average claim amount
+    SELECT *
+FROM claims
+WHERE claim_amount > (
+    SELECT AVG(claim_amount)
+    FROM claims
+);
+
+#2. Find customers who registered claims
+
+    SELECT *
+FROM users
+WHERE user_id IN (
+    SELECT user_id
+    FROM policyholders
+    WHERE policyholder_id IN (
+        SELECT policyholder_id
+        FROM claims
+    )
+);
+    
+    #3. Find high-risk claims
+    
+    SELECT *FROM claims
+WHERE claim_id IN (
+    SELECT claim_id
+    FROM fraud_assessments
+    WHERE fraud_score > 70
+);
+    #4. Find the highest claim amount
+    SELECT *FROM claims
+WHERE claim_amount = (
+    SELECT MAX(claim_amount)
+    FROM claims
+);
+
+# 5. Find claims having completed settlements
+SELECT *
+FROM claims
+WHERE claim_id IN (
+    SELECT claim_id
+    FROM settlements
+    WHERE payment_status = 'Completed'
+);
+
+# 6. Find vehicles belonging to comprehensive policyholders
+    SELECT *
+FROM vehicles
+WHERE policy_id IN (
+    SELECT policy_id
+    FROM policies
+    WHERE policy_type = 'Comprehensive'
+);
+
+# Views #
+# 1 Displays customer names, email and contact details.
+CREATE VIEW customer_details AS
+SELECT
+    u.user_id,
+    u.name,
+    u.email,
+    u.phone,
+    p.city,
+    p.state
+FROM users u
+JOIN policyholders p
+ON u.user_id = p.user_id;
+
+SELECT * FROM customer_details;
+
+#2 Displays customer claim information.
+
+CREATE VIEW claim_details AS
+SELECT
+    c.claim_id,
+    u.name AS customer_name,
+    c.accident_date,
+    c.claim_amount,
+    c.claim_status
+FROM claims c
+JOIN policyholders p
+ON c.policyholder_id = p.policyholder_id
+JOIN users u
+ON p.user_id = u.user_id;
+
+SELECT * FROM claim_details;
+# 3 Displays customer and vehicle information.
+CREATE VIEW vehicle_details AS
+SELECT
+    v.vehicle_id,
+    u.name AS customer_name,
+    v.vehicle_number,
+    v.vehicle_model,
+    v.vehicle_type
+FROM vehicles v
+JOIN policyholders p
+ON v.policyholder_id = p.policyholder_id
+JOIN users u
+ON p.user_id = u.user_id;
+SELECT * FROM vehicle_details;
+# 4 Displays claims with their AI fraud assessment results
+CREATE VIEW fraud_details AS
+SELECT
+    c.claim_id,
+    c.claim_amount,
+    f.fraud_score,
+    f.fraud_status,
+    f.fraud_reason
+FROM claims c
+JOIN fraud_assessments f
+ON c.claim_id = f.claim_id;
+SELECT * FROM fraud_details;
+
+# 5 Displays repair costs and garage information
+CREATE VIEW repair_details AS
+SELECT
+    r.estimate_id,
+    c.claim_id,
+    g.garage_name,
+    r.parts_cost,
+    r.labour_cost,
+    r.total_estimated_cost
+FROM repair_estimates r
+JOIN claims c
+ON r.claim_id = c.claim_id
+JOIN garages g
+ON r.garage_id = g.garage_id;
+SELECT * FROM repair_details;
+
+# 6 Displays surveyor names and assigned claims.
+CREATE VIEW surveyor_details AS
+SELECT
+    s.assignment_id,
+    c.claim_id,
+    u.name AS surveyor_name,
+    s.assigned_date,
+    s.assignment_status
+FROM survey_assignments s
+JOIN users u
+ON s.surveyor_id = u.user_id
+JOIN claims c
+ON s.claim_id = c.claim_id;
+SELECT * FROM surveyor_details;
+# 7 Displays customer settlement and payment information.
+CREATE VIEW settlement_details AS
+SELECT
+    s.settlement_id,
+    u.name AS customer_name,
+    s.claim_id,
+    s.approved_amount,
+    s.payment_status,
+    s.settlement_date
+FROM settlements s
+JOIN claims c
+ON s.claim_id = c.claim_id
+JOIN policyholders p
+ON c.policyholder_id = p.policyholder_id
+JOIN users u
+ON p.user_id = u.user_id;
+SELECT * FROM settlement_details;
+
+# How to check your views
+SHOW FULL TABLES
+WHERE TABLE_TYPE = 'VIEW';
+# Stored Procedures
+# 1. Display all claims
+DELIMITER $$
+
+CREATE PROCEDURE GetAllClaims()
+BEGIN
+    SELECT * FROM claims;
+END $$
+
+DELIMITER ;
+CALL GetAllClaims();
+# 2 Display claim details using Claim ID
+DELIMITER $$
+
+CREATE PROCEDURE GetClaimByID(IN p_claim_id INT)
+BEGIN
+    SELECT * FROM claims
+    WHERE claim_id = p_claim_id;
+END $$
+
+DELIMITER ;
+CALL GetClaimByID(1);
+# 3. Display high-risk fraud claims
+DELIMITER $$
+
+CREATE PROCEDURE GetHighRiskClaims()
+BEGIN
+    SELECT *
+    FROM fraud_assessments
+    WHERE fraud_status = 'High Risk';
+END $$
+
+DELIMITER ;
+CALL GetHighRiskClaims();
+ # 4. Update claim status
+ DELIMITER $$
+
+CREATE PROCEDURE UpdateClaimStatus(
+    IN p_claim_id INT,
+    IN p_status VARCHAR(50)
+)
+BEGIN
+    UPDATE claims
+    SET claim_status = p_status
+    WHERE claim_id = p_claim_id;
+END $$
+
+DELIMITER ;
+CALL UpdateClaimStatus(3, 'Approved');
+
+# 5. Display customer claim history
+DELIMITER $$
+
+CREATE PROCEDURE GetCustomerClaims(IN p_customer_id INT)
+BEGIN
+    SELECT *
+    FROM claims
+    WHERE policyholder_id = p_customer_id;
+END $$
+
+DELIMITER ;
+CALL GetCustomerClaims(1);
+
+#6. Display completed settlements
+DELIMITER $$
+
+CREATE PROCEDURE GetCompletedSettlements()
+BEGIN
+    SELECT *
+    FROM settlements
+    WHERE payment_status = 'Completed';
+END $$
+
+DELIMITER ;
+CALL GetCompletedSettlements();
+
+# 7. Display total claim amount
+DELIMITER $$
+
+CREATE PROCEDURE GetTotalClaimAmount()
+BEGIN
+    SELECT SUM(claim_amount) AS total_claim_amount
+    FROM claims;
+END $$
+
+DELIMITER ;
+CALL GetTotalClaimAmount();
+# How to check your stored procedures
+SHOW PROCEDURE STATUS
+WHERE Db = 'claimssure_ai';
+
+# Triggers #
+#1 Prevent duplicate active claims for the same vehicle
+USE claimssure_ai;
+
+DELIMITER $$
+
+CREATE TRIGGER trg_prevent_duplicate_claim
+BEFORE INSERT ON claims
+FOR EACH ROW
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM claims
+        WHERE vehicle_id = NEW.vehicle_id
+        AND claim_status IN (
+            'Registered',
+            'Under Review',
+            'Survey Assigned',
+            'Approved'
+        )
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'An active claim already exists for this vehicle';
+    END IF;
+END $$
+
+DELIMITER ;
+
+#2 Prevent negative claim amounts
+DELIMITER $$
+
+CREATE TRIGGER trg_validate_claim_amount
+BEFORE INSERT ON claims
+FOR EACH ROW
+BEGIN
+    IF NEW.claim_amount <= 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Claim amount must be greater than zero';
+    END IF;
+END $$
+
+DELIMITER ;
+# 3 Validate fraud score
+DELIMITER $$
+
+CREATE TRIGGER trg_validate_fraud_score
+BEFORE INSERT ON fraud_assessments
+FOR EACH ROW
+BEGIN
+    IF NEW.fraud_score < 0 OR NEW.fraud_score > 100 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Fraud score must be between 0 and 100';
+    END IF;
+END $$
+
+DELIMITER ;
+
+#4 Automatically update claim status after successful payment
+DELIMITER $$
+
+CREATE TRIGGER trg_update_claim_after_settlement
+AFTER UPDATE ON settlements
+FOR EACH ROW
+BEGIN
+    IF NEW.payment_status = 'Completed'
+       AND OLD.payment_status <> 'Completed' THEN
+
+        UPDATE claims
+        SET claim_status = 'Settled'
+        WHERE claim_id = NEW.claim_id;
+
+    END IF;
+END $$
+
+DELIMITER ;
+
+# 5 Prevent settlement amount greater than claim amount
+DELIMITER $$
+
+CREATE TRIGGER trg_validate_settlement_amount
+BEFORE INSERT ON settlements
+FOR EACH ROW
+BEGIN
+    DECLARE v_claim_amount DECIMAL(12,2);
+
+    SELECT claim_amount
+    INTO v_claim_amount
+    FROM claims
+    WHERE claim_id = NEW.claim_id;
+
+    IF NEW.approved_amount > v_claim_amount THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Settlement amount cannot exceed claim amount';
+    END IF;
+END $$
+
+DELIMITER ;
+
+#Check whether all triggers were created
+SHOW TRIGGERS;
+
+# 1 Test duplicate active claim
+SELECT * FROM claims;
+#  Choose a vehicle_id that already has an active claim
+INSERT INTO claims
+(policyholder_id, vehicle_id, policy_id, garage_id,
+ accident_date, accident_description, claim_amount)
+VALUES
+(2, 2, 2, 2, '2026-10-20',
+ 'Duplicate accident claim', 30000);
+# 2 Test negative claim amount
+INSERT INTO claims
+(policyholder_id, vehicle_id, policy_id, garage_id,
+ accident_date, accident_description, claim_amount)
+VALUES
+(1, 1, 1, 1, '2026-10-21',
+ 'Testing negative amount', -5000);
+ 
+ # 3 Test invalid fraud score
+ INSERT INTO fraud_assessments
+(claim_id, fraud_score, fraud_status, fraud_reason)
+VALUES
+(1, 150, 'High Risk', 'Testing invalid fraud score');
+
+# 4 Test automatic claim status update
+SELECT * FROM settlements
+WHERE claim_id = 2;
+# If claim 2 has a settlement with Pending payment status, update it
+UPDATE settlements
+SET payment_status = 'Completed'
+WHERE claim_id = 2;
+# check the claim
+SELECT claim_id, claim_status
+FROM claims
+WHERE claim_id = 2;
+# 5 Final trigger verification
+SHOW TRIGGERS;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
