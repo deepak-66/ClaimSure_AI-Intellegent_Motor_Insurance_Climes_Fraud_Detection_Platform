@@ -1,6 +1,6 @@
 # ClaimSure AI — Intelligent Motor Insurance Claims & Fraud Detection Platform
 
-**Team Number:** 06  
+**Team Number:** 04  
 **Team Name:** Cortex Coders  
 **Problem ID:** CC-06  
 **Domain:** Insurance  
